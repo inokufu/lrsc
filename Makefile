@@ -17,29 +17,26 @@ PROJECT_NAME = learninglocker
 ENV ?= dev
 
 COMPOSE_FILES = -f docker-compose.yml -f docker-compose.$(ENV).yml
+ALL_PROFILES = --profile all
 
 .PHONY: build up down logs
 
 GLOBAL_COMPOSE_CMD = $(COMPOSE_CMD) $(COMPOSE_FILES)
-GLOBAL_COMPOSE_CMD_UP = $(GLOBAL_COMPOSE_CMD) up -d
 
 build:
-	$(GLOBAL_COMPOSE_CMD) build
+	$(GLOBAL_COMPOSE_CMD) $(ALL_PROFILES) build
 
 up:
-	$(GLOBAL_COMPOSE_CMD_UP)
+	$(GLOBAL_COMPOSE_CMD) $(ALL_PROFILES) up -d
 
 down:
-	$(GLOBAL_COMPOSE_CMD) down
+	$(GLOBAL_COMPOSE_CMD) $(ALL_PROFILES) down
 
 logs:
-	$(GLOBAL_COMPOSE_CMD) logs -f
+	$(GLOBAL_COMPOSE_CMD) $(ALL_PROFILES) logs -f
 
-build-up:
-	$(GLOBAL_COMPOSE_CMD_UP) --build
+ll-init:
+	$(GLOBAL_COMPOSE_CMD) exec api node cli/dist/server createSiteAdmin ${LL_MASTER_EMAIL} ${LL_ORGANIZATION_NAME} ${LL_MASTER_PASSWORD}
 
-create-site-admin:
-	$(GLOBAL_COMPOSE_CMD) exec api node cli/dist/server createSiteAdmin ${MASTER_EMAIL} ${ORGANIZATION_NAME} ${MASTER_PASSWORD}
-
-disable-register:
+ll-disable-register:
 	$(GLOBAL_COMPOSE_CMD) exec api node cli/dist/server disableRegister

@@ -1,0 +1,17 @@
+{
+    "endpoint": "",
+    "serviceKey": "",
+    "secretKey": "",
+    "catalogUri": "https://api.visionstrust.com/v1/",
+    "contractUri": "https://contract.visionstrust.com/",
+    "consentUri": "https://consent.visiontrust.com/v1/",
+    "expressLimitSize": "2gb",
+    "credentials": [
+        {
+            "_id": "67375ec5f29f0c5a15265de5",
+            "key": "Authorization",
+            "value": "",
+            "type": "apiHeader"
+        }
+    ]
+}

@@ -28,7 +28,7 @@ services:
 ## ----------------- Traefik -----------------
   traefik:
     image: traefik:v3.3.2
-    restart: unless-stopped
+    restart: always
     networks:
       - learninglocker
       - lrs_connector_network
@@ -37,8 +37,10 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./volumes/traefik_data:/letsencrypt
     labels:
-      - "traefik.enable=false"
+      - "traefik.enable=false"  # Overridden by dev/prod
     logging: *default-logging
+    profiles: ["all"]
+
 
 ## ----------------- LRS CONNECTOR -----------------
   lrs_connector:
@@ -48,14 +50,15 @@ services:
     container_name: lrs_connector
     command: "uvicorn src.main:app --host 0.0.0.0 --port ${LRS_CONNECTOR_PORT}"
     restart: unless-stopped
-    env_file:
-      - ./lrs-connector/.env
     networks:
       - lrs_connector_network
     tty: true
     labels:
       - "traefik.enable=false"  # Overridden by dev/prod
     logging: *default-logging
+    depends_on:
+      - traefik
+    profiles: ["lrs_connector", "all"]
 
 
 ## ----------------- LEARNINGLOCKER -----------------
@@ -75,6 +78,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
+    profiles: ["learninglocker", "all"]
 
 
   redis:
@@ -91,6 +95,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
+    profiles: ["learninglocker", "all"]
 
 
   ## ----------------- xAPI -----------------
@@ -98,14 +103,16 @@ services:
     image: learninglocker/xapi-service:6.0.0
     restart: unless-stopped
     environment:
-      - MONGO_URL
-      - MONGO_DB
-      - REDIS_URL
+      - MONGO_URL=${LL_MONGO_URL}
+      - MONGO_DB=${LL_MONGO_DB}
+      - REDIS_URL=${LL_REDIS_URL}
     depends_on:
       mongo:
         condition: service_healthy
       redis:
         condition: service_healthy
+      traefik:
+        condition: service_started
     networks:
       - learninglocker
     volumes:
@@ -113,6 +120,7 @@ services:
     labels:
       - "traefik.enable=false"  # Overridden by dev/prod
     logging: *default-logging
+    profiles: ["learninglocker", "all"]
 
 
   ## ----------------- LearningLocker App -- using learninglocker.Dockerfile-----------------
@@ -127,6 +135,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      traefik:
+        condition: service_started
     networks:
       - learninglocker
     env_file:
@@ -134,8 +144,9 @@ services:
     volumes:
       - app-storage:/opt/learninglocker/storage
     labels:
-      - "traefik.enable=false"
+      - "traefik.enable=false"  # Overridden by dev/prod
     logging: *default-logging
+    profiles: ["learninglocker", "all"]
 
 
   ui:
@@ -149,6 +160,8 @@ services:
         condition: service_healthy
       api:
         condition: service_started
+      traefik:
+        condition: service_started
     networks:
       - learninglocker
     env_file:
@@ -156,8 +169,9 @@ services:
     volumes:
       - ./volumes/ui_logs:/opt/learninglocker/logs
     labels:
-      - "traefik.enable=false"
+      - "traefik.enable=false"  # Overridden by dev/prod
     logging: *default-logging
+    profiles: ["learninglocker", "all"]
 
 
   worker:
@@ -171,6 +185,8 @@ services:
         condition: service_healthy
       api:
         condition: service_started
+      traefik:
+        condition: service_started
     networks:
       - learninglocker
     env_file:
@@ -178,37 +194,48 @@ services:
     volumes:
       - app-storage:/opt/learninglocker/storage
     labels:
-      - "traefik.enable=false"
+      - "traefik.enable=false"  # Overridden by dev/prod
     logging: *default-logging
+    profiles: ["learninglocker", "all"]
+
 
 ## ----------------- PDC -----------------
   dataspace-connector:
     container_name: dataspace-connector
     build:
-      context: ./dataspace-connector/
-      dockerfile: docker/app/Dockerfile
-      args:
-        ENV: ${NODE_ENV}
+      context: ./dsc
+      dockerfile: dsc.Dockerfile
     restart: unless-stopped
+    depends_on:
+      traefik:
+        condition: service_started
+      mongo:
+        condition: service_healthy
     tty: true
-    volumes:
-      - './dataspace-connector/src/:/usr/src/app/src'
     logging: *default-logging
     env_file:
-      - ./dataspace-connector/.env
-    environment:
-      MONGO_URI: ${MONGO_URI}
+      - ./dsc/.env.production
+    command: "npm run start"
     networks:
       - dataspace-connector
+    profiles: ["dataspace-connector", "all"]
 
 
   mongodb:
+    image: mongo:latest
     container_name: "mongodb"
-    build:
-      context: ./dataspace-connector/
-      dockerfile: docker/mongodb/Dockerfile
+    restart: unless-stopped
     volumes:
       - ./volumes/data:/data/db
     logging: *default-logging
     networks:
       - dataspace-connector
+    depends_on:
+      - traefik
+    healthcheck:
+      test: ["CMD-SHELL","mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    profiles: ["dataspace-connector", "all"]

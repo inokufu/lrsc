@@ -1,0 +1,29 @@
+[project]
+name = "lrs-connector"
+version = "0.0.1"
+description = "The LRS Connector is a Python library that allows any DataSpace project to interact a the Learning Record Store (LRS) GET API."
+authors = [
+    { name = "guilfb", email = "guillaume.lefebvre@inokufu.com" }
+]
+dependencies = [
+    "fastapi>=0.115.5",
+    "uvicorn>=0.32.1",
+    "requests>=2.32.3",
+    "pydantic>=2.10.1",
+]
+readme = "README.md"
+requires-python = ">= 3.10"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.rye]
+managed = true
+dev-dependencies = []
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
