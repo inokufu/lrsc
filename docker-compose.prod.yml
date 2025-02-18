@@ -1,0 +1,58 @@
+services:
+  traefik:
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--api.dashboard=false"
+      - "--accesslog=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--certificatesresolvers.le.acme.tlschallenge=true"
+      - "--certificatesresolvers.le.acme.email=${LETSENCRYPT_EMAIL}"
+      - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    labels:
+      - "traefik.enable=true"
+
+
+  lrs_connector:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.lrsc.rule=Host(`${LRS_CONNECTOR_DOMAIN_NAME}`)"
+      - "traefik.http.routers.lrsc.entrypoints=websecure"
+      - "traefik.http.routers.lrsc.tls=true"
+      - "traefik.http.routers.lrsc.tls.certresolver=le"
+      - "traefik.http.services.lrsc.loadbalancer.server.port=${LRS_CONNECTOR_PORT}"
+
+
+  xapi:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.xapi.rule=Host(`${LL_DOMAIN_NAME}`) && PathPrefix(`/data/xAPI`)"
+      - "traefik.http.routers.xapi.entrypoints=websecure"
+      - "traefik.http.routers.xapi.tls=true"
+      - "traefik.http.routers.xapi.tls.certresolver=le"
+      - "traefik.http.services.xapi.loadbalancer.server.port=${LL_API_PORT}"
+
+
+  ui:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ui.rule=Host(`${LL_DOMAIN_NAME}`)"
+      - "traefik.http.routers.ui.entrypoints=websecure"
+      - "traefik.http.routers.ui.tls=true"
+      - "traefik.http.routers.ui.tls.certresolver=le"
+      - "traefik.http.services.ui.loadbalancer.server.port=${LL_UI_PORT}"
+
+  dataspace-connector:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dsc.rule=Host(`${DSC_DOMAIN_NAME}`)"
+      - "traefik.http.routers.dsc.entrypoints=websecure"
+      - "traefik.http.routers.dsc.tls=true"
+      - "traefik.http.routers.dsc.tls.certresolver=le"
+      - "traefik.http.services.dsc.loadbalancer.server.port=${DSC_PORT}"

@@ -1,0 +1,46 @@
+services:
+  traefik:
+    command:
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--log.level=DEBUG"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    labels:
+      - "traefik.enable=true"
+
+
+  lrs_connector:
+    networks:
+      - learninglocker
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.lrsc.rule=Host(`${LRS_CONNECTOR_DOMAIN_NAME}`)"
+      - "traefik.http.routers.lrsc.entrypoints=web"
+      - "traefik.http.services.lrsc.loadbalancer.server.port=${LRS_CONNECTOR_PORT}"
+
+
+  xapi:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.xapi.rule=Host(`${LL_DOMAIN_NAME}`) && PathPrefix(`/data/xAPI`)"
+      - "traefik.http.routers.xapi.entrypoints=web"
+      - "traefik.http.services.xapi.loadbalancer.server.port=${LL_API_PORT}"
+
+
+  ui:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ui.rule=Host(`${LL_DOMAIN_NAME}`)"
+      - "traefik.http.routers.ui.entrypoints=web"
+      - "traefik.http.services.ui.loadbalancer.server.port=${LL_UI_PORT}"
+
+  dataspace-connector:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dsc.rule=Host(`${DSC_DOMAIN_NAME}`)"
+      - "traefik.http.routers.dsc.entrypoints=web"
+      - "traefik.http.services.dsc.loadbalancer.server.port=${DSC_PORT}"

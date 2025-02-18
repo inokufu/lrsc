@@ -1,0 +1,214 @@
+# Reusable logging config
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "100m"
+    max-file: "14"
+    compress: "true"
+
+
+# Networks
+networks:
+  learninglocker:
+    # driver: bridge
+    external: false
+  lrs_connector_network:
+    # driver: bridge
+    external: false
+  dataspace-connector:
+    external: false
+
+
+# Volumes
+volumes:
+  app-storage:
+
+
+services:
+## ----------------- Traefik -----------------
+  traefik:
+    image: traefik:v3.3.2
+    restart: unless-stopped
+    networks:
+      - learninglocker
+      - lrs_connector_network
+      - dataspace-connector
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./volumes/traefik_data:/letsencrypt
+    labels:
+      - "traefik.enable=false"
+    logging: *default-logging
+
+## ----------------- LRS CONNECTOR -----------------
+  lrs_connector:
+    build:
+      context: ./lrs-connector
+      dockerfile: Dockerfile
+    container_name: lrs_connector
+    command: "uvicorn src.main:app --host 0.0.0.0 --port ${LRS_CONNECTOR_PORT}"
+    restart: unless-stopped
+    env_file:
+      - ./lrs-connector/.env
+    networks:
+      - lrs_connector_network
+    tty: true
+    labels:
+      - "traefik.enable=false"  # Overridden by dev/prod
+    logging: *default-logging
+
+
+## ----------------- LEARNINGLOCKER -----------------
+  ## ----------------- Databases -----------------
+  mongo:
+    image: mongo:latest
+    restart: unless-stopped
+    container_name: mongo
+    networks:
+      - learninglocker
+    volumes:
+      - ./volumes/mongo_data:/data/db
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL","mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+
+  redis:
+    image: redis:latest
+    restart: unless-stopped
+    networks:
+      - learninglocker
+    volumes:
+      - ./volumes/redis_data:/data
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+
+  ## ----------------- xAPI -----------------
+  xapi:
+    image: learninglocker/xapi-service:6.0.0
+    restart: unless-stopped
+    environment:
+      - MONGO_URL
+      - MONGO_DB
+      - REDIS_URL
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - learninglocker
+    volumes:
+      - ./volumes/xapi_storage:/usr/src/app/storage
+    labels:
+      - "traefik.enable=false"  # Overridden by dev/prod
+    logging: *default-logging
+
+
+  ## ----------------- LearningLocker App -- using learninglocker.Dockerfile-----------------
+  api:
+    build:
+      dockerfile: ./learninglocker-deployment/node8.learninglocker.Dockerfile
+    image: learninglocker-app:latest
+    command: "node api/dist/server"
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - learninglocker
+    env_file:
+      - ./learninglocker-deployment/.env
+    volumes:
+      - app-storage:/opt/learninglocker/storage
+    labels:
+      - "traefik.enable=false"
+    logging: *default-logging
+
+
+  ui:
+    image: learninglocker-app:latest
+    command: "node ui/dist/server"
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+    networks:
+      - learninglocker
+    env_file:
+      - ./learninglocker-deployment/.env
+    volumes:
+      - ./volumes/ui_logs:/opt/learninglocker/logs
+    labels:
+      - "traefik.enable=false"
+    logging: *default-logging
+
+
+  worker:
+    image: learninglocker-app:latest
+    command: "node worker/dist/server"
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+    networks:
+      - learninglocker
+    env_file:
+      - ./learninglocker-deployment/.env
+    volumes:
+      - app-storage:/opt/learninglocker/storage
+    labels:
+      - "traefik.enable=false"
+    logging: *default-logging
+
+## ----------------- PDC -----------------
+  dataspace-connector:
+    container_name: dataspace-connector
+    build:
+      context: ./dataspace-connector/
+      dockerfile: docker/app/Dockerfile
+      args:
+        ENV: ${NODE_ENV}
+    restart: unless-stopped
+    tty: true
+    volumes:
+      - './dataspace-connector/src/:/usr/src/app/src'
+    logging: *default-logging
+    env_file:
+      - ./dataspace-connector/.env
+    environment:
+      MONGO_URI: ${MONGO_URI}
+    networks:
+      - dataspace-connector
+
+
+  mongodb:
+    container_name: "mongodb"
+    build:
+      context: ./dataspace-connector/
+      dockerfile: docker/mongodb/Dockerfile
+    volumes:
+      - ./volumes/data:/data/db
+    logging: *default-logging
+    networks:
+      - dataspace-connector
