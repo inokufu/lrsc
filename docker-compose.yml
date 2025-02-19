@@ -9,13 +9,11 @@ x-logging: &default-logging
 
 # Networks
 networks:
-  learninglocker:
-    # driver: bridge
+  ll:
     external: false
-  lrs_connector_network:
-    # driver: bridge
+  lrsc:
     external: false
-  dataspace-connector:
+  pdc:
     external: false
 
 
@@ -30,9 +28,9 @@ services:
     image: traefik:v3.3.2
     restart: always
     networks:
-      - learninglocker
-      - lrs_connector_network
-      - dataspace-connector
+      - ll
+      - lrsc
+      - pdc
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./volumes/traefik_data:/letsencrypt
@@ -43,22 +41,22 @@ services:
 
 
 ## ----------------- LRS CONNECTOR -----------------
-  lrs_connector:
+  lrsc:
     build:
-      context: ./lrs-connector
+      context: ./lrsc
       dockerfile: Dockerfile
-    container_name: lrs_connector
-    command: "uvicorn src.main:app --host 0.0.0.0 --port ${LRS_CONNECTOR_PORT}"
+    container_name: lrsc
+    command: "uvicorn src.main:app --host 0.0.0.0 --port ${LRSC_PORT}"
     restart: unless-stopped
     networks:
-      - lrs_connector_network
+      - lrsc
     tty: true
     labels:
       - "traefik.enable=false"  # Overridden by dev/prod
     logging: *default-logging
     depends_on:
       - traefik
-    profiles: ["lrs_connector", "all"]
+    profiles: ["lrsc", "all"]
 
 
 ## ----------------- LEARNINGLOCKER -----------------
@@ -68,7 +66,7 @@ services:
     restart: unless-stopped
     container_name: mongo
     networks:
-      - learninglocker
+      - ll
     volumes:
       - ./volumes/mongo_data:/data/db
     logging: *default-logging
@@ -78,14 +76,14 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
-    profiles: ["learninglocker", "all"]
+    profiles: ["ll", "all"]
 
 
   redis:
     image: redis:latest
     restart: unless-stopped
     networks:
-      - learninglocker
+      - ll
     volumes:
       - ./volumes/redis_data:/data
     logging: *default-logging
@@ -95,7 +93,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
-    profiles: ["learninglocker", "all"]
+    profiles: ["ll", "all"]
 
 
   ## ----------------- xAPI -----------------
@@ -114,20 +112,20 @@ services:
       traefik:
         condition: service_started
     networks:
-      - learninglocker
+      - ll
     volumes:
       - ./volumes/xapi_storage:/usr/src/app/storage
     labels:
       - "traefik.enable=false"  # Overridden by dev/prod
     logging: *default-logging
-    profiles: ["learninglocker", "all"]
+    profiles: ["ll", "all"]
 
 
-  ## ----------------- LearningLocker App -- using learninglocker.Dockerfile-----------------
+  ## ----------------- LearningLocker App -- using ll.Dockerfile-----------------
   api:
     build:
-      dockerfile: ./learninglocker-deployment/node8.learninglocker.Dockerfile
-    image: learninglocker-app:latest
+      dockerfile: ./ll/ll.Dockerfile
+    image: ll-app:latest
     command: "node api/dist/server"
     restart: unless-stopped
     depends_on:
@@ -138,19 +136,19 @@ services:
       traefik:
         condition: service_started
     networks:
-      - learninglocker
+      - ll
     env_file:
-      - ./learninglocker-deployment/.env
+      - ./ll/.env
     volumes:
       - app-storage:/opt/learninglocker/storage
     labels:
       - "traefik.enable=false"  # Overridden by dev/prod
     logging: *default-logging
-    profiles: ["learninglocker", "all"]
+    profiles: ["ll", "all"]
 
 
   ui:
-    image: learninglocker-app:latest
+    image: ll-app:latest
     command: "node ui/dist/server"
     restart: unless-stopped
     depends_on:
@@ -163,19 +161,19 @@ services:
       traefik:
         condition: service_started
     networks:
-      - learninglocker
+      - ll
     env_file:
-      - ./learninglocker-deployment/.env
+      - ./ll/.env
     volumes:
       - ./volumes/ui_logs:/opt/learninglocker/logs
     labels:
       - "traefik.enable=false"  # Overridden by dev/prod
     logging: *default-logging
-    profiles: ["learninglocker", "all"]
+    profiles: ["ll", "all"]
 
 
   worker:
-    image: learninglocker-app:latest
+    image: ll-app:latest
     command: "node worker/dist/server"
     restart: unless-stopped
     depends_on:
@@ -188,20 +186,20 @@ services:
       traefik:
         condition: service_started
     networks:
-      - learninglocker
+      - ll
     env_file:
-      - ./learninglocker-deployment/.env
+      - ./ll/.env
     volumes:
       - app-storage:/opt/learninglocker/storage
     labels:
       - "traefik.enable=false"  # Overridden by dev/prod
     logging: *default-logging
-    profiles: ["learninglocker", "all"]
+    profiles: ["ll", "all"]
 
 
 ## ----------------- PDC -----------------
-  dataspace-connector:
-    container_name: dataspace-connector
+  pdc:
+    container_name: pdc
     build:
       context: ./pdc
       dockerfile: pdc.Dockerfile
@@ -217,8 +215,8 @@ services:
       - ./pdc/.env.production
     command: "npm run start"
     networks:
-      - dataspace-connector
-    profiles: ["dataspace-connector", "all"]
+      - pdc
+    profiles: ["pdc", "all"]
 
 
   mongodb:
@@ -229,7 +227,7 @@ services:
       - ./volumes/data:/data/db
     logging: *default-logging
     networks:
-      - dataspace-connector
+      - pdc
     depends_on:
       - traefik
     healthcheck:
@@ -238,4 +236,4 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
-    profiles: ["dataspace-connector", "all"]
+    profiles: ["pdc", "all"]

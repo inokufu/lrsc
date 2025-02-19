@@ -13,14 +13,14 @@ services:
       - "traefik.enable=true"
 
 
-  lrs_connector:
+  lrsc:
     networks:
-      - learninglocker
+      - ll
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.lrsc.rule=Host(`${LRS_CONNECTOR_DOMAIN_NAME}`)"
+      - "traefik.http.routers.lrsc.rule=Host(`${LRSC_DOMAIN_NAME}`)"
       - "traefik.http.routers.lrsc.entrypoints=web"
-      - "traefik.http.services.lrsc.loadbalancer.server.port=${LRS_CONNECTOR_PORT}"
+      - "traefik.http.services.lrsc.loadbalancer.server.port=${LRSC_PORT}"
 
 
   xapi:
@@ -38,7 +38,7 @@ services:
       - "traefik.http.routers.ui.entrypoints=web"
       - "traefik.http.services.ui.loadbalancer.server.port=${LL_UI_PORT}"
 
-  dataspace-connector:
+  pdc:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.pdc.rule=Host(`${PDC_DOMAIN_NAME}`)"
