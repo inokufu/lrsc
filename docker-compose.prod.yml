@@ -51,8 +51,8 @@ services:
   dataspace-connector:
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.dsc.rule=Host(`${DSC_DOMAIN_NAME}`)"
-      - "traefik.http.routers.dsc.entrypoints=websecure"
-      - "traefik.http.routers.dsc.tls=true"
-      - "traefik.http.routers.dsc.tls.certresolver=le"
-      - "traefik.http.services.dsc.loadbalancer.server.port=${DSC_PORT}"
+      - "traefik.http.routers.pdc.rule=Host(`${PDC_DOMAIN_NAME}`)"
+      - "traefik.http.routers.pdc.entrypoints=websecure"
+      - "traefik.http.routers.pdc.tls=true"
+      - "traefik.http.routers.pdc.tls.certresolver=le"
+      - "traefik.http.services.pdc.loadbalancer.server.port=${PDC_PORT}"

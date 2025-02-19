@@ -203,8 +203,8 @@ services:
   dataspace-connector:
     container_name: dataspace-connector
     build:
-      context: ./dsc
-      dockerfile: dsc.Dockerfile
+      context: ./pdc
+      dockerfile: pdc.Dockerfile
     restart: unless-stopped
     depends_on:
       traefik:
@@ -214,7 +214,7 @@ services:
     tty: true
     logging: *default-logging
     env_file:
-      - ./dsc/.env.production
+      - ./pdc/.env.production
     command: "npm run start"
     networks:
       - dataspace-connector
