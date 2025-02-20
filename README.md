@@ -1,4 +1,4 @@
-# LRS -- LRS Connector -- PDC
+# LRSC -- Learning Record Store Connector
 
 This project allows you to simultaneously deploy three components:
 - **LRS (LearningLocker)**
