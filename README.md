@@ -199,4 +199,4 @@ You can update the credentials using one of the following methods:
 
 ## License
 
-This project is open source and distributed under the [MIT License](LICENSE).
+This project is open source and distributed under the [MIT License](LICENSE.md).
