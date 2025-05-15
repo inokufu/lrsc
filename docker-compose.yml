@@ -104,6 +104,7 @@ services:
       - MONGO_URL=${LL_MONGO_URL}
       - MONGO_DB=${LL_MONGO_DB}
       - REDIS_URL=${LL_REDIS_URL}
+      - EXPRESS_PORT=${LL_API_PORT}
     depends_on:
       mongo:
         condition: service_healthy
